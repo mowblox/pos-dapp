@@ -8,6 +8,7 @@ contract PointOfSale {
     uint256 public totalSales;  // Total sales amount
     uint256 public numTransactions;  // Total number of transactions
     IERC20 usdt;
+    uint CURRENCY_CONVERSION_RATE = 650000000000000; // 1USD equals that value in Wei
 
     // Acceptable payment methods
     enum PayMethod {
@@ -64,11 +65,11 @@ contract PointOfSale {
         productInventory[_productId] = _initialInventory;
     }
 
-    function _purchaseProductWithStable(uint256 _productId, uint256 _quantity, uint256 _amount) private {
+    function _purchaseProductWithStable(uint256 _amount) private {
         require(usdt.transferFrom(msg.sender, address(this), _amount), "Transfer failed");
     }
 
-    function _purchaseProductWithEther(uint256 _productId, uint256 _quantity, uint256 _amount) private {
+    function _purchaseProductWithEther(uint256 _amount) private {
         require(msg.value >= _amount, "Insufficient funds");
     }
 
@@ -79,9 +80,9 @@ contract PointOfSale {
         uint256 totalPrice = products[_productId].price * _quantity;
 
         if(_payMethod == PayMethod.ETH) {
-            _purchaseProductWithEther(_productId, _quantity, totalPrice);
+            _purchaseProductWithEther(totalPrice);
         } else if (_payMethod == PayMethod.USDT) {
-            _purchaseProductWithStable(_productId, _quantity, totalPrice);
+            _purchaseProductWithStable(totalPrice);
         }
 
         // Update inventory and sales data
@@ -121,5 +122,14 @@ contract PointOfSale {
         require(msg.sender == owner, "Only the owner can withdraw funds");
         require(_amount <= address(this).balance, "Insufficient contract balance");
         payable(owner).transfer(_amount);
+    }
+
+    // Function to withdraw funds from the contract (only the owner can do this)
+    function withdrawFundsUsdt(uint256 _amount) public {
+        require(msg.sender == owner, "Only the owner can withdraw funds");
+        uint256 balance = usdt.balanceOf(address(this));
+        require(balance >= _amount, "Insufficient contract balance");
+        
+        usdt.transfer(msg.sender, _amount);
     }
 }
